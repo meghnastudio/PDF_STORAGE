@@ -1,74 +1,373 @@
+<?php
+$baseDir = __DIR__ . '/';
+
+// Handle file upload
+function handleFileUpload($baseDir, $currentFolder = '') {
+    $uploadDir = $baseDir . '/' . $currentFolder;
+
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    if ($_FILES['file']['error'] === UPLOAD_ERR_OK) {
+        $uploadedFile = $uploadDir . '/' . basename($_FILES['file']['name']);
+
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $uploadedFile)) {
+            echo "File uploaded successfully!";
+        } else {
+            echo "Error uploading file.";
+        }
+    } else {
+        echo "Error: " . $_FILES['file']['error'];
+    }
+}
+
+// Handle file/folder deletion
+function deleteFileOrFolder($baseDir, $name) {
+    $path = $baseDir . '/' . $name;
+
+    if (is_file($path)) {
+        unlink($path);
+    } elseif (is_dir($path)) {
+        deleteDir($path);
+    }
+
+    echo "Deleted successfully!";
+}
+
+// Recursively delete a directory
+function deleteDir($dir) {
+    $files = array_diff(scandir($dir), ['.', '..']);
+
+    foreach ($files as $file) {
+        (is_dir("$dir/$file")) ? deleteDir("$dir/$file") : unlink("$dir/$file");
+    }
+
+    return rmdir($dir);
+}
+
+// Handle folder creation
+function createFolder($baseDir, $folderName) {
+    $newFolder = $baseDir . '/' . $folderName;
+
+    if (!file_exists($newFolder)) {
+        mkdir($newFolder, 0777, true);
+        echo "Folder created successfully!";
+    } else {
+        echo "Folder already exists!";
+    }
+}
+
+// Handle file/folder renaming
+function renameFileOrFolder($baseDir, $oldName, $newName) {
+    $oldPath = $baseDir . '/' . $oldName;
+    $newPath = $baseDir . '/' . $newName;
+
+    if (!file_exists($newPath)) {
+        rename($oldPath, $newPath);
+        echo "Renamed successfully!";
+    } else {
+        echo "File/Folder with the new name already exists!";
+    }
+}
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['upload'])) {
+        $currentFolder = $_POST['currentFolder'] ?? '';
+        handleFileUpload($baseDir, $currentFolder);
+    } elseif (isset($_POST['delete'])) {
+        $name = $_POST['name'];
+        deleteFileOrFolder($baseDir, $name);
+    } elseif (isset($_POST['createFolder'])) {
+        $folderName = $_POST['folderName'];
+        createFolder($baseDir, $folderName);
+    } elseif (isset($_POST['rename'])) {
+        $oldName = $_POST['name'];
+        $newName = $_POST['newName'];
+        renameFileOrFolder($baseDir, $oldName, $newName);
+    } elseif (isset($_POST['deleteFolder'])) {
+        $name = $_POST['name'];
+        deleteFileOrFolder($baseDir, $name);
+    } elseif (isset($_POST['renameFolder'])) {
+        $oldName = $_POST['name'];
+        $newName = $_POST['newName'];
+        renameFileOrFolder($baseDir, $oldName, $newName);
+    }
+}
+
+// List files and folders
+$currentFolder = isset($_GET['folder']) ? $_GET['folder'] : '';
+$files = scandir($baseDir . '/' . $currentFolder);
+$files = array_diff($files, ['.', '..']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome Page</title>
+    <title>File Manager By Meghna Studio</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* Add this style for toast */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+            max-width: 300px;
+            word-wrap: break-word;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .success {
+            background-color: #4caf50;
+        }
+
+        .error {
+            background-color: #f44336;
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: linear-gradient(to right, #2193b0, #6dd5ed);
+            color: #fff;
         }
 
-        .container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-        }
-
-        .welcome-box {
+        h1 {
             text-align: center;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 50px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .welcome-box h1 {
-            font-size: 3rem;
-            color: #6e8efb;
+        form {
+            margin-bottom: 10px;
         }
 
-        .welcome-box p {
-            font-size: 1.2rem;
-            color: #333;
-            margin: 20px 0;
+        ul {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
         }
 
-        .button {
-            padding: 12px 25px;
-            background-color: #6e8efb;
-            color: white;
-            text-decoration: none;
-            font-size: 1rem;
+        .file-item {
+            background-color: rgba(255, 255, 255, 0.1);
             border-radius: 5px;
-            transition: background-color 0.3s;
+            padding: 10px;
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
 
-        .button:hover {
-            background-color: #a777e3;
+        .file-item:hover {
+            background-color: rgba(255, 255, 255, 0.2);
         }
+
+        .folder-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .file-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            word-wrap: break-word;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            margin-bottom: 5px;
+        }
+
+        .button-container {
+            margin-top: auto;
+        }
+
+        .file-item button {
+            margin-top: 5px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+
+        .file-item button:hover {
+            background-color: #45a049;
+        }
+
+        .rename-input {
+            margin-top: 5px;
+            padding: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .home-button {
+            cursor: pointer;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .home-button:hover {
+            background-color: #2980b9;
+        }
+
+        @media (max-width: 768px) {
+            .file-item {
+                width: 100%;
+            }
+        }
+        
+        
+        
+        
+        
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .action-bar form {
+            margin-bottom: 0;
+        }
+        
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="welcome-box">
-            <h1>Welcome to Our Website</h1>
-            <p>We are glad to have you here!</p>
-            <a href="#explore" class="button">Explore More</a>
-        </div>
+    <h1>File Manager By Meghna Studio</h1>
+    <div id="toast-container"></div>
+
+
+<div class="action-bar">
+            <button class="home-button" onclick="goHome()">Home</button>
+
+        <!-- File Upload Form -->
+        <form action="" method="post" enctype="multipart/form-data">
+            <label for="file">Choose a file to upload:</label>
+            <input type="file" name="file" id="file" required>
+            <?php if (!empty($currentFolder)): ?>
+                <input type="hidden" name="currentFolder" value="<?php echo $currentFolder; ?>">
+            <?php endif; ?>
+            <button type="submit" name="upload">Upload File</button>
+        </form>
+
+        <!-- Folder Creation Form -->
+        <?php if (empty($currentFolder)): ?>
+            <form action="" method="post">
+                <label for="folderName">Enter folder name:</label>
+                <input type="text" name="folderName" id="folderName" required>
+                <button type="submit" name="createFolder">Create Folder</button>
+            </form>
+        <?php endif; ?>
     </div>
+
+
+
+
+
+
+    <!-- File List -->
+    <ul>
+        <?php foreach ($files as $file): ?>
+            <li class="file-item">
+                <?php if (is_dir($baseDir . '/' . $currentFolder . '/' . $file)): ?>
+                    <div class="folder-icon">📁</div>
+                    <span class="file-name">
+                        <a href="?folder=<?php echo $currentFolder . '/' . $file; ?>"><?php echo $file; ?></a>
+                    </span>
+                    <div class="button-container">
+                        <button type="button" onclick="copyLink('<?php echo $currentFolder . '/' . $file; ?>')">Copy Link</button>
+                        <form action="" method="post" style="display:inline;">
+                            <input type="hidden" name="name" value="<?php echo $currentFolder . '/' . $file; ?>">
+                            <button type="submit" name="deleteFolder">Delete</button>
+                        </form>
+                        <form action="" method="post" style="display:inline;">
+                            <input type="hidden" name="name" value="<?php echo $currentFolder . '/' . $file; ?>">
+                            <input class="rename-input" type="text" name="newName" placeholder="New Name" required>
+                            <button type="submit" name="renameFolder">Rename</button>
+                        </form>
+                    </div>
+                <?php else: ?>
+                    <div class="file-icon">📄</div>
+                    <span class="file-name"><?php echo $file; ?></span>
+                    <div class="button-container">
+                        <button type="button" onclick="copyLink('<?php echo $currentFolder . '/' . $file; ?>')">Copy Link</button>
+                        <form action="" method="post" style="display:inline;">
+                            <input type="hidden" name="name" value="<?php echo $currentFolder . '/' . $file; ?>">
+                            <button type="submit" name="delete">Delete</button>
+                        </form>
+                        <form action="" method="post" style="display:inline;">
+                            <input type="hidden" name="name" value="<?php echo $currentFolder . '/' . $file; ?>">
+                            <input class="rename-input" type="text" name="newName" placeholder="New Name" required>
+                            <button type="submit" name="rename">Rename</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+
+    <script>
+        function showToast(message, isError = false) {
+            const toastContainer = document.getElementById('toast-container');
+
+            // Create a new toast element
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : 'success'}`;
+            toast.textContent = message;
+
+            // Append the toast to the container
+            toastContainer.appendChild(toast);
+
+            // Remove the toast after a few seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+function copyLink(fileName) {
+    // Customize the link generation based on your server structure
+    var link = window.location.origin + window.location.pathname + 'uploads' + fileName;
+    navigator.clipboard.writeText(link).then(function () {
+        showToast('Link copied to clipboard: ' + link);
+    }).catch(function (err) {
+        showToast('Unable to copy link', true);
+
+        console.error('Unable to copy link',err);});
+}
+
+        function goHome() {
+            window.location.href = window.location.origin + '/';
+        }
+    </script>
 </body>
 </html>
-
