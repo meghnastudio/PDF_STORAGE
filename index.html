@@ -1,5 +1,5 @@
 <?php
-$baseDir = __DIR__ . '/';
+$baseDir = __DIR__ . '/uploads';
 
 // Handle file upload
 function handleFileUpload($baseDir, $currentFolder = '') {
@@ -356,7 +356,7 @@ $files = array_diff($files, ['.', '..']);
 
 function copyLink(fileName) {
     // Customize the link generation based on your server structure
-    var link = window.location.origin + window.location.pathname + '/' + fileName;
+    var link = window.location.origin + window.location.pathname + 'uploads' + fileName;
     navigator.clipboard.writeText(link).then(function () {
         showToast('Link copied to clipboard: ' + link);
     }).catch(function (err) {
